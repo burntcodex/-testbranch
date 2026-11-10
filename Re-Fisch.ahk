@@ -1,6 +1,6 @@
 ﻿;====================================================================================================;
 ;
-;   Re:Fisch  -  Alpha 2.4
+;   Re:Fisch  -  Alpha 2.5
 ;   A fishing macro for Fisch (Roblox). Made by bai. Personal use.
 ;
 ;   CREDITS  (also shown in the About tab)
@@ -61,7 +61,7 @@
 #MaxThreadsPerHotkey 2
 
 DFBetaVersion := "1.1.7-refisch-r10.3-ui-restore"
-RfVersion := "Alpha 2.4"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
+RfVersion := "Alpha 2.5"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
 
 setkeydelay, -1
 setmousedelay, -1
@@ -20296,8 +20296,8 @@ if (RfUiN = 0 and RfActiveTab = "Utilities" and DllCall("IsWindowVisible", "Ptr"
 return
 
 ; ------------------------------------------------------------------------------------------------
-; Status overlay (redrawn in 2.4), in the main window's style: a soft shadow, a rounded panel lit
-; from the top in the state's colour, the logo and name with the version, a state pill (Ready /
+; Status overlay (redrawn in 2.4), in the main window's style: a soft shadow, a rounded panel in
+; one even colour, the logo and name with the version, a state pill (Ready /
 ; Running / Appraising, its dot breathing while Ready), the current task with its details, one
 ; stats card (casts, fights, time-outs, time) and the keys as key caps in a footer. x, y are the
 ; panel's screen pixels; o holds what to show.
@@ -20350,13 +20350,13 @@ RfOvRender(x, y, o) {
 			i := sh - A_Index + 1
 			RfOvShape(g, -i, -i + 3 * k, pw + 2 * i, ph + 2 * i, 14 * k + i, "000000", Round(2 + 26 * (1 - i / sh) ** 2), "")
 			}
-		; panel: lighter at the top, the state's colour glowing down from the top edge
+		; panel: one even colour (2.5: the state-coloured glow fading into grey looked odd; the state
+		; colour is only in the pill now)
 		path := RfGdipRoundPath(0.5, 0.5, pw - 1, ph - 1, 14 * k)
-		RfOvGrad(g, path, 0, ph, RfMix(ColorPanel, "FFFFFF", 0.045), 246, ColorPanel, 246)
-		DllCall("gdiplus\GdipSetClipPath", "Ptr", g, "Ptr", path, "Int", 0)
-		RfOvGrad(g, path, 0, 70 * k, cc, 34, cc, 0)
-		RfOvRect(g, 0, 0, pw, 2 * k, cc, 200)
-		DllCall("gdiplus\GdipResetClip", "Ptr", g)
+		br := 0
+		DllCall("gdiplus\GdipCreateSolidFill", "UInt", (RfArgb(ColorPanel) & 0xFFFFFF) | (246 << 24), "Ptr*", br)
+		DllCall("gdiplus\GdipFillPath", "Ptr", g, "Ptr", br, "Ptr", path)
+		DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
 		pen := 0
 		DllCall("gdiplus\GdipCreatePen1", "UInt", RfArgb(RfMix(ColorEdge, "FFFFFF", 0.06)), "Float", 1.0, "Int", 2, "Ptr*", pen)
 		DllCall("gdiplus\GdipDrawPath", "Ptr", g, "Ptr", pen, "Ptr", path)
@@ -20457,18 +20457,6 @@ RfOvRect(g, x, y, w, ht, fill, a) {
 	br := 0
 	DllCall("gdiplus\GdipCreateSolidFill", "UInt", (RfArgb(fill) & 0xFFFFFF) | (a << 24), "Ptr*", br)
 	DllCall("gdiplus\GdipFillRectangle", "Ptr", g, "Ptr", br, "Float", x, "Float", y, "Float", w, "Float", ht)
-	DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
-}
-
-; Fills path with a top-to-bottom gradient from c1 (alpha a1) at y0 to c2 (alpha a2) at y1.
-RfOvGrad(g, path, y0, y1, c1, a1, c2, a2) {
-	VarSetCapacity(p1, 8, 0), VarSetCapacity(p2, 8, 0)
-	NumPut(0.0, p1, 0, "Float"), NumPut(y0 - 0.5, p1, 4, "Float")
-	NumPut(0.0, p2, 0, "Float"), NumPut(y1 + 0.5, p2, 4, "Float")
-	br := 0
-	DllCall("gdiplus\GdipCreateLineBrush", "Ptr", &p1, "Ptr", &p2
-		, "UInt", (RfArgb(c1) & 0xFFFFFF) | (a1 << 24), "UInt", (RfArgb(c2) & 0xFFFFFF) | (a2 << 24), "Int", 3, "Ptr*", br)
-	DllCall("gdiplus\GdipFillPath", "Ptr", g, "Ptr", br, "Ptr", path)
 	DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
 }
 
