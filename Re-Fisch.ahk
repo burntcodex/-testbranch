@@ -1,6 +1,6 @@
 ﻿;====================================================================================================;
 ;
-;   Re:Fisch  -  Alpha 2.5
+;   Re:Fisch  -  Alpha 2.6
 ;   A fishing macro for Fisch (Roblox). Made by bai. Personal use.
 ;
 ;   CREDITS  (also shown in the About tab)
@@ -61,7 +61,7 @@
 #MaxThreadsPerHotkey 2
 
 DFBetaVersion := "1.1.7-refisch-r10.3-ui-restore"
-RfVersion := "Alpha 2.5"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
+RfVersion := "Alpha 2.6"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
 
 setkeydelay, -1
 setmousedelay, -1
@@ -130,6 +130,7 @@ ProfileFields.Push( ["Minigame","ControlMode","Precision","controlmode"]
                   , ["Minigame","SideBarRatio","0.8","num"]
                   , ["Minigame","SideBarWaitMultiplier","4.5","num"]
                   , ["Minigame","SpecialRod","None","specialrod"]
+                  , ["Minigame","RodAutoDetect","true","bool"]
                   , ["Minigame","RemembranceMode","Living","remembrancemode"]
                   , ["Minigame","NoteColor","0xB2CFFF","str"]
                   , ["Minigame","NoteColorTolerance","15","num"]
@@ -902,6 +903,7 @@ if (!RfEngPrepare())
 	MsgBox, 4144, Re:Fisch, Roblox is not running, or its window could not be found.`nStart Roblox, then press Start again.
 	goto Idle
 	}
+RfRodAuto(false)
 if (!RfSetupSteps())
 	goto Idle
 
@@ -2195,6 +2197,13 @@ RfMsSince(t) {
 	return Round((now - t) * 1000.0 / QpcFreq, 1)
 }
 
+; Alpha 2.6: rods that play the plain bar like a normal rod. Ruinous Oath does; only its bar
+; shrinks during a perfect catch (38 % of the track down to 15 %), which the width ring follows.
+RfPlainRod() {
+	global SpecialRod
+	return (SpecialRod = "None" or SpecialRod = "Ruinous Oath")
+}
+
 ; Rods that draw their own reel UI (the edge gate does not watch them).
 RfOwnReelUi() {
 	global SpecialRod
@@ -2208,11 +2217,11 @@ RfReelBarSeen(ByRef seen) {
 	global
 	local found
 	found := RfBarFind()
-	if (found and (SpecialRod = "None" or SpecialRod = "Splitbranch Twig") and RfFight.cal > 0 and RunWidth < RfFight.cal * 0.2)
+	if (found and (RfPlainRod() or SpecialRod = "Splitbranch Twig") and RfFight.cal > 0 and RunWidth < RfFight.cal * 0.2)
 		found := false
 	; On a normal Precision rod a found bar already establishes visibility. Other
 	; scanners (including Lines) can update rod state, so keep those calls.
-	seen := (found and SpecialRod = "None" and ControlMode != "Lines") ? true : RfFishLineSeen()
+	seen := (found and RfPlainRod() and ControlMode != "Lines") ? true : RfFishLineSeen()
 	if (!found and !seen and SpecialRod != "Remembrance" and SpecialRod != "MiguRod" and SpecialRod != "Halibut Harpoon"
 		and SpecialRod != "Tryhard Rod" and SpecialRod != "Stellarwave Melody")
 		seen := (RfArrowFind() >= 0)
@@ -2564,7 +2573,7 @@ RfSteer(found) {
 		if (ax < 0)
 			return RfPress(false)
 		RfHudBarC(ax)
-		if (SpecialRod != "None")
+		if (!RfPlainRod())
 			return RfSteerApply((ax > FishX) ? false : true)
 		barWidth := (WhiteBarSize > 0) ? WhiteBarSize : m.cal
 		if (barWidth <= 0)
@@ -3302,7 +3311,7 @@ ProfFieldOk(type, ByRef val) {
 		{
 		if (val = "Pinion Aria")
 			val := "Pinions Aria"
-		return (val = "None" or val = "Pinions Aria" or val = "Requiem" or val = "Darkheart" or val = "Bellona's Waraxe" or val = "Dreambreaker" or val = "Tranquility" or val = "Noiseform" or val = "Verdant Oath" or val = "Lullaby" or val = "Castbound" or val = "Remembrance" or val = "MiguRod" or val = "Halibut Harpoon" or val = "Splitbranch Twig" or val = "Astraenus Serenade" or val = "Tryhard Rod" or val = "Chasm Stalker" or val = "Stellarwave Melody")
+		return (val = "None" or val = "Pinions Aria" or val = "Requiem" or val = "Darkheart" or val = "Bellona's Waraxe" or val = "Dreambreaker" or val = "Tranquility" or val = "Noiseform" or val = "Verdant Oath" or val = "Ruinous Oath" or val = "Lullaby" or val = "Castbound" or val = "Remembrance" or val = "MiguRod" or val = "Halibut Harpoon" or val = "Splitbranch Twig" or val = "Astraenus Serenade" or val = "Tryhard Rod" or val = "Chasm Stalker" or val = "Stellarwave Melody")
 		}
 	if (type = "remembrancemode")
 		return (val = "Living" or val = "Departed")
@@ -9502,7 +9511,7 @@ RfBarByColour() {
 ; gaps of up to 26 px (the arrow) bridged, at least 60 % and at most 130 % of the usual width ref
 ; (40 px to 45 % of the band when no width is known yet). Column s and width w.
 RfBarOffColour(y, ref, ByRef s, ByRef w) {
-	global CaptureW, CaptureH
+	global CaptureW, CaptureH, SpecialRod
 	static off := 0x4D5841
 	s := -1, w := 0
 	if (y < 0 or y >= CaptureH or CaptureW < 40)
@@ -9527,7 +9536,8 @@ RfBarOffColour(y, ref, ByRef s, ByRef w) {
 		}
 	if (a >= 0 and last - a + 1 > best)
 		best := last - a + 1, s := a
-	lo := (ref > 8) ? ref * 0.6 : 40, hi := (ref > 8) ? ref * 1.3 : CaptureW * 0.45
+	; Alpha 2.6: Ruinous Oath's bar can have shrunk since its last white read (down to 15 / 38)
+	lo := (ref > 8) ? ref * ((SpecialRod = "Ruinous Oath") ? 0.35 : 0.6) : 40, hi := (ref > 8) ? ref * 1.3 : CaptureW * 0.45
 	if (best < lo or best > hi)
 		{
 		s := -1
@@ -18382,10 +18392,10 @@ RfGroupOn(g) {
 	if (g = "requiem")
 		return (SpecialRod = "Requiem")
 	if (g = "otherrod")
-		return (SpecialRod != "None" and SpecialRod != "Stellarwave Melody" and SpecialRod != "Remembrance"
+		return (!RfPlainRod() and SpecialRod != "Stellarwave Melody" and SpecialRod != "Remembrance"
 			and SpecialRod != "Halibut Harpoon" and SpecialRod != "Requiem")
 	if (g = "norod")
-		return (SpecialRod = "None")
+		return RfPlainRod()
 	return true
 }
 
@@ -18906,8 +18916,8 @@ return
 ; ------------------------------------------------------------------------------------------------
 RfBuildRod:
 RfT := "Rod"
-RfRodList := "None|Stellarwave Melody|Pinions Aria|Requiem|Darkheart|Bellona's Waraxe|Dreambreaker|Tranquility|Noiseform|Verdant Oath|Lullaby|Castbound|Remembrance|MiguRod|Halibut Harpoon|Splitbranch Twig|Tryhard Rod"
-RfCard(RfT, "", RfL, RfY0, RfCW, 160)
+RfRodList := "None|Stellarwave Melody|Pinions Aria|Requiem|Darkheart|Bellona's Waraxe|Dreambreaker|Tranquility|Noiseform|Verdant Oath|Ruinous Oath|Lullaby|Castbound|Remembrance|MiguRod|Halibut Harpoon|Splitbranch Twig|Tryhard Rod"
+RfCard(RfT, "", RfL, RfY0, RfCW, 222)
 RfHead(RfT, "", RfL + 14, RfY0 + 12, 200, "ROD")
 RfRowDdl(RfT, "", RfL, RfY0 + 34, "Special rod", "SpecialRod", RfRodList, "Pick the rod you fish with if it has its own`nminigame. None = any normal rod.")
 RfRowDdl(RfT, "stellar", RfL, RfY0 + 60, "Skin", "StellarSkin", "Default|Kitty Keys", "Kitty Keys has its own sign detection.")
@@ -18916,6 +18926,14 @@ Gui, 1:Add, Text, % "x" . (RfL + 14) . " y" . (RfY0 + 92) . " w360 h60 +0x80 vRf
 Gui, 1:Font, s9 Norm, Segoe UI
 RfStyle[RfRn] := {bg: RfBrushCard, fg: ColorMutedBGR}
 RfReg(RfRn, RfT, "")
+; Alpha 2.6: rod auto-detect (RfRodAuto)
+RfChk(RfT, "", RfL + 14, RfY0 + 158, 230, "RodAutoDetect", "Detect my rod automatically", "When you press Start, reads the rod's name off the`nhotbar (Windows text reading) and picks it above,`nwith its reel settings. Uses the rod hotbar key's`nslot first (Settings, Recovery).")
+RfBtn(RfT, "", RfL + 254, RfY0 + 154, 120, 24, "Detect now", "RfRodDetectNow", "ghost")
+Gui, 1:Font, s8 Norm, Segoe UI
+Gui, 1:Add, Text, % "x" . (RfL + 14) . " y" . (RfY0 + 186) . " w360 h28 +0x80 vRfRodDetTxt HwndRfRdt", Picks the rod from the hotbar when you press Start.
+Gui, 1:Font, s9 Norm, Segoe UI
+RfStyle[RfRdt] := {bg: RfBrushCard, fg: ColorMutedBGR}
+RfReg(RfRdt, RfT, "")
 ; per-rod options (right column; Stellarwave uses that column for its own card)
 RfY := RfY0
 RfCard(RfT, "notstellar", RfR, RfY, RfCW, 140)
@@ -18935,7 +18953,7 @@ RfChk(RfT, "stellar", RfR + 14, RfY0 + 84, 360, "SwRetryClicks", "Retry failed c
 RfRowDdl(RfT, "kitty", RfR, RfY0 + 112, "Click speed", "KittyClickSpeed", "Normal|Fast|Turbo", "How long each sign click hovers, holds and`nrests. NORMAL = original timings, FAST is`nabout a third quicker, TURBO is quickest.`nDrop a level if signs get missed.")
 RfRowEdit(RfT, "kitty", RfR, RfY0 + 138, "Min shape match (%)", "KittyShapeMin", "How closely a sign must match its zodiac.")
 RfRowEdit(RfT, "kitty", RfR, RfY0 + 164, "Shape margin (%)", "KittyShapeMargin", "How much better the best match must be`nthan the runner-up.")
-RfY := RfY0 + 170
+RfY := RfY0 + 232
 RfCard(RfT, "stellar", RfL, RfY, RfCW, 160)
 RfHead(RfT, "swdefault", RfL + 14, RfY + 12, 300, "STELLARWAVE COLORS")
 RfSwDefs := [["Bar frame", "StellarBarColors", "StellarBarTol"], ["Fish line", "StellarFishColors", "StellarFishTol"], ["Fish head", "StellarHeadColors", "StellarHeadTol"]]
@@ -19688,6 +19706,8 @@ RfRefreshDerived:
 RfNote := ""
 if (SpecialRod = "None")
 	RfNote := "Any rod without its own minigame. Reel control and colors are on the Fishing tab."
+else if (SpecialRod = "Ruinous Oath")
+	RfNote := "Plays like a normal rod (Fishing tab settings). Its bar shrinks during a perfect catch, and the reel follows the new width."
 else if (SpecialRod = "Stellarwave Melody")
 	RfNote := (StellarSkin = "Kitty Keys") ? "Kitty Keys skin: Space steers the bar while the mouse clicks the zodiac signs. Keep the cursor free (no shift lock)." : "Clicks the zodiac signs in the order shown above the bar, then reels. Keep the cursor free (no shift lock)."
 else
@@ -21652,6 +21672,157 @@ Loop, 2
 	RfPp := StrSplit(RfPv, ",")
 	GuiControl, 1:, RfApPos%A_Index%Txt, % (RfPv = "") ? ((A_Index = 1) ? "not set" : "not used") : "set  ·  " . Round(RfPp[1] * 100) . " % across, " . Round(RfPp[2] * 100) . " % down"
 	}
+return
+
+; ---- rod auto-detect (Alpha 2.6) -----------------------------------------------------------------
+; The special rods, with the word(s) of their hotbar name they are recognised by.
+RfRodNames() {
+	static names := ""
+	if (!IsObject(names))
+		names := [["Stellarwave Melody", "stellarwave"], ["Pinions Aria", "pinions"], ["Requiem", "requiem"]
+			, ["Darkheart", "darkheart"], ["Bellona's Waraxe", "bellona waraxe"], ["Dreambreaker", "dreambreaker"]
+			, ["Tranquility", "tranquility"], ["Noiseform", "noiseform"], ["Verdant Oath", "verdant"]
+			, ["Ruinous Oath", "ruinous"], ["Lullaby", "lullaby"], ["Castbound", "castbound"]
+			, ["Remembrance", "remembrance"], ["MiguRod", "migu"], ["Halibut Harpoon", "halibut harpoon"]
+			, ["Splitbranch Twig", "splitbranch"], ["Tryhard Rod", "tryhard"]]
+	return names
+}
+
+; Which rod a hotbar slot's text names: a special rod (exact word, then a letter off per 4 for words
+; of 6+ letters, folded like the totem names), "None" for any other rod (the word Rod), "" for none.
+RfRodNameIn(txt) {
+	t := RfTotFold(txt)
+	if (t = "")
+		return ""
+	joined := StrReplace(t, " ")
+	for i, e in RfRodNames()
+		{
+		kws := e[2]
+		Loop, Parse, kws, %A_Space%
+			if (InStr(joined, RfTotFold(A_LoopField)))
+				return e[1]
+		}
+	for i, e in RfRodNames()
+		{
+		kws := e[2]
+		Loop, Parse, kws, %A_Space%
+			if (StrLen(A_LoopField) >= 6 and RfTotWordNear(t, RfTotFold(A_LoopField)))
+				return e[1]
+		}
+	if (InStr(" " . t . " ", " rod "))
+		return "None"
+	return ""
+}
+
+; Reads the hotbar with Windows text recognition and returns the rod on it: a special rod's name,
+; "None" (a rod without its own minigame) or "" (no rod read; why in RfRodDetWhy). The slot of the
+; rod hotbar key is read first and decides when it holds a rod; otherwise the first special rod in
+; any slot, else the first other rod. Slots are found as in RfTotScan.
+RfRodDetect() {
+	global RodSlotKey, WindowWidth, WindowHeight, RfRodDetWhy, KittyLogBuffer
+	RfRodDetWhy := ""
+	if (!RfTextEnsure(8000))
+		{
+		RfRodDetWhy := "Windows text reading is not available"
+		return ""
+		}
+	winW := WindowWidth, winH := WindowHeight
+	if (winW < 200 or winH < 200)
+		{
+		RfRodDetWhy := "the Roblox window is too small"
+		return ""
+		}
+	lefts := RfTotSlotLefts(), how := "numbers seen"
+	if (!lefts.Length())
+		{
+		how := "assumed 9 slots"
+		Loop 9
+			lefts.Push(Round(winW / 2 + (A_Index - 5) * winH * 0.0653 - winH * 0.0316))
+		}
+	k := Trim(RodSlotKey), first := 0
+	if (RegExMatch(k, "^\d$"))
+		first := (k = "0") ? 10 : k + 0
+	order := []
+	if (first >= 1 and first <= lefts.Length())
+		order.Push(first)
+	Loop % lefts.Length()
+		if (A_Index != first)
+			order.Push(A_Index)
+	rod := "", other := "", log := ""
+	for j, i in order
+		{
+		x := lefts[i]
+		fx := (x + winH * 0.001) / winW, fw := winH * 0.061 / winW
+		if (fx < 0 or fx + fw > 1)
+			continue
+		txt := RfOcrArea(fx, 0.936, fw, 0.061, 3000)
+		log .= " [" . i . "] " . RegExReplace(txt, "\s+", " ")
+		nm := RfRodNameIn(txt)
+		if (nm = "")
+			continue
+		if (i = first or nm != "None")
+			{
+			rod := nm
+			break
+			}
+		if (other = "")
+			other := nm
+		}
+	if (rod = "")
+		rod := other
+	if (rod = "")
+		RfRodDetWhy := "no rod name read on the hotbar"
+	KittyLogBuffer .= "[" . A_Hour . ":" . A_Min . ":" . A_Sec . "] rod detect (" . how . "): "
+		. ((rod = "") ? "none" : rod) . "  read:" . log . "`r`n"
+	return rod
+}
+
+; Rod auto-detect: the rod read off the hotbar is picked in the Special rod list, exactly as if
+; chosen there (SpecialRodChanged: its reel control and colour presets, then auto-save). On start
+; only while the switch is on; manual (Detect now) always. A failed read keeps the current rod.
+RfRodAuto(manual := false) {
+	global
+	local rod
+	if (!manual and !RodAutoDetect)
+		return ""
+	rod := RfRodDetect()
+	if (rod = "")
+		RfRodDetSay := "Rod not detected (" . RfRodDetWhy . "), so " . SpecialRod . " is kept."
+	else
+		{
+		RfRodDetSay := "Detected " . ((rod = "None") ? "a normal rod" : rod) . " on the hotbar at " . A_Hour . ":" . A_Min . "."
+		if (rod != SpecialRod)
+			{
+			GuiControl, 1:ChooseString, SpecialRod, %rod%
+			gosub, SpecialRodChanged
+			RfMeasure()          ; some rods read a different reel area
+			}
+		}
+	GuiControl, 1:, RfRodDetTxt, %RfRodDetSay%
+	return rod
+}
+
+; Detect now (Rod tab): Roblox in front with this window out of the way, then the hotbar read.
+RfRodDetectNow:
+if (MacroRunning)
+	{
+	GuiControl, 1:, RfRodDetTxt, Stop fishing first.
+	return
+	}
+RfFindRoblox()
+if (!RobloxHwnd)
+	{
+	GuiControl, 1:, RfRodDetTxt, Roblox is not open.
+	return
+	}
+GuiControl, 1:, RfRodDetTxt, Reading the hotbar...
+Gui, 1:Hide
+RfFrontRoblox()
+Sleep, 400
+RfMeasure()
+RfRodAuto(true)
+Gui, 1:Show
+SetTimer, RfRepaint, -150
 return
 
 

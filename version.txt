@@ -1,3 +1,3 @@
-version=Alpha 2.5
+version=Alpha 2.6
 file=Re-Fisch.ahk
-notes=Status overlay: the background is one even colour now; the state colour is only in the status pill
+notes=New: Ruinous Oath rod support (follows its shrinking bar during perfect catches) | New: Detect my rod automatically (Rod tab) - reads your rod off the hotbar when you press Start and picks its settings
