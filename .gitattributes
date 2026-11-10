@@ -1,0 +1,2 @@
+# Serve every file byte-for-byte (the updater checks the script as published)
+* -text

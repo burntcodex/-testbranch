@@ -1,0 +1,3 @@
+version=Alpha 2.2
+file=Re-Fisch.ahk
+notes=New: automatic updates. About tab > Updates: check on start-up, Stable or Test channel, Check now.
