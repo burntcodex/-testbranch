@@ -1,6 +1,6 @@
 ﻿;====================================================================================================;
 ;
-;   Re:Fisch  -  Alpha 2.2
+;   Re:Fisch  -  Alpha 2.3
 ;   A fishing macro for Fisch (Roblox). Made by bai. Personal use.
 ;
 ;   CREDITS  (also shown in the About tab)
@@ -61,7 +61,7 @@
 #MaxThreadsPerHotkey 2
 
 DFBetaVersion := "1.1.7-refisch-r10.3-ui-restore"
-RfVersion := "Alpha 2.2"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
+RfVersion := "Alpha 2.3"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
 
 setkeydelay, -1
 setmousedelay, -1
@@ -18781,7 +18781,7 @@ for RfI, RfRow in RfHomeRows
 RfY := RfY0 + 210
 RfCard(RfT, "", RfL, RfY, RfCW, 112)
 RfHead(RfT, "", RfL + 16, RfY + 13, 300, "UTILITIES")
-RfChk(RfT, "", RfL + 16, RfY + 37, 356, "RfDupRfTotOn", "Auto Totem  ·  use totems between casts", "Same switch as on the Utilities tab, where the`ntotems and their timers are set.")
+RfChk(RfT, "", RfL + 16, RfY + 37, 356, "RfDupRfTotOn", "Auto Totem  ·  keep totem events going", "Same switch as on the Utilities tab, where the`nevents are picked.")
 RfLbl(RfT, "", RfL + 16, RfY + 58, 356, "Auto Appraise is started from the Utilities tab.", ColorMutedBGR, 20)
 RfBtn(RfT, "", RfL + 16, RfY + 80, 150, 24, "Open Utilities", "RfGoUtilities", "ghost", "", "", Chr(0xE90F))
 ; quick toggles
@@ -18962,29 +18962,18 @@ return
 ; ------------------------------------------------------------------------------------------------
 RfBuildUtilities:
 RfT := "Utilities"
-; AUTO TOTEM
-RfCard(RfT, "", RfL, RfY0, RfCW, 300)
+; AUTO TOTEM (rebuilt in 2.3: pick events, the totems are found on the hotbar by name)
+RfCard(RfT, "", RfL, RfY0, RfCW, 344)
 RfHead(RfT, "", RfL + 14, RfY0 + 12, 300, "AUTO TOTEM")
-RfChk(RfT, "", RfL + 14, RfY0 + 36, 360, "RfTotOn", "Use totems between casts", "Each totem below is used on its own timer, just before`na cast, then the rod goes back in hand.")
-RfLbl(RfT, "", RfL + 150, RfY0 + 62, 70, "hotbar key", ColorMutedBGR, 18)
-RfLbl(RfT, "", RfL + 230, RfY0 + 62, 120, "every (minutes)", ColorMutedBGR, 18)
-RfY := RfY0 + 58 + 1 * 26
-RfChk(RfT, "", RfL + 14, RfY + 1, 120, "RfTot1On", "Totem 1")
-RfEdit(RfT, "", RfL + 150, RfY, 60, "RfTot1Key", "The hotbar key the totem sits on (1-9, 0).")
-RfEdit(RfT, "", RfL + 230, RfY, 70, "RfTot1Min", "Minutes between uses (the totem's own length).")
-RfY := RfY0 + 58 + 2 * 26
-RfChk(RfT, "", RfL + 14, RfY + 1, 120, "RfTot2On", "Totem 2")
-RfEdit(RfT, "", RfL + 150, RfY, 60, "RfTot2Key", "The hotbar key the totem sits on (1-9, 0).")
-RfEdit(RfT, "", RfL + 230, RfY, 70, "RfTot2Min", "Minutes between uses (the totem's own length).")
-RfY := RfY0 + 58 + 3 * 26
-RfChk(RfT, "", RfL + 14, RfY + 1, 120, "RfTot3On", "Totem 3")
-RfEdit(RfT, "", RfL + 150, RfY, 60, "RfTot3Key", "The hotbar key the totem sits on (1-9, 0).")
-RfEdit(RfT, "", RfL + 230, RfY, 70, "RfTot3Min", "Minutes between uses (the totem's own length).")
-RfChk(RfT, "", RfL + 14, RfY0 + 168, 360, "RfTotStart", "Use them as soon as fishing starts")
-RfRowEdit(RfT, "", RfL, RfY0 + 194, "Use time (ms)", "RfTotUseMs", "How long to wait after using a totem before`nputting the rod back in hand.")
-RfHint(RfT, "", RfL + 14, RfY0 + 224, 360, 44, "Used in list order, so put a Sundial before an Aurora. The rod hotbar key`n(Settings, Recovery) puts the rod back in hand afterwards.")
+RfChk(RfT, "", RfL + 14, RfY0 + 36, 360, "RfTotOn", "Keep the events below going", "Between casts: finds the totems on the hotbar, uses a Sundial`nfirst when an event needs day or night, and uses the totem`nagain when its icon (bottom right) goes away.")
+RfLbl(RfT, "", RfL + 14, RfY0 + 62, 300, "EVENTS", ColorDimBGR, 16)
+for RfI, RfV in RfTotDefs()
+	RfChk(RfT, "", RfL + 14 + ((RfI - 1) // 6) * 182, RfY0 + 80 + Mod(RfI - 1, 6) * 24, 176, "RfTotE" . RfV.id, RfV.label, RfV.tip)
+RfRowEdit(RfT, "", RfL, RfY0 + 230, "Use time (ms)", "RfTotUseMs", "How long to wait after using a totem before`nthe next one (or the rod back in hand).")
+RfRowEdit(RfT, "", RfL, RfY0 + 256, "No icon seen: again after (min)", "RfTotRetryMin", "When no new icon shows up after a totem is used,`nit is used again after this many minutes.")
+RfHint(RfT, "", RfL + 14, RfY0 + 284, 360, 18, "Needs the rod hotbar key (Settings, Recovery) and Windows text reading.")
 Gui, 1:Font, s8 Norm, Segoe UI
-Gui, 1:Add, Text, % "x" . (RfL + 14) . " y" . (RfY0 + 272) . " w360 h18 +0x80 +0x4000 vRfTotStatus HwndhRfTotStatus", -
+Gui, 1:Add, Text, % "x" . (RfL + 14) . " y" . (RfY0 + 306) . " w360 h32 +0x80 vRfTotStatus HwndhRfTotStatus", -
 Gui, 1:Font, s9 Norm, Segoe UI
 RfStyle[hRfTotStatus] := {bg: RfBrushCard, fg: ColorGreenBGR}
 RfReg(hRfTotStatus, RfT, "")
@@ -20572,12 +20561,15 @@ RfOcrArea(fx, fy, fw, fh, timeoutMs := 5000) {
 ;====================================================================================================;
 
 RfUtilDefaults() {
-	static d := {RfTotOn: 0, RfTotStart: 1, RfTotUseMs: 2500
-		, RfTot1On: 1, RfTot1Key: "", RfTot1Min: 15
-		, RfTot2On: 0, RfTot2Key: "", RfTot2Min: 15
-		, RfTot3On: 0, RfTot3Key: "", RfTot3Min: 15
-		, RfApTargets: "Shiny, Sparkling", RfApKey: "e", RfApMax: 50, RfApWaitMs: 900, RfApResultMs: 1600
-		, RfApPos1: "", RfApPos2: ""}
+	static d := ""
+	if (!IsObject(d))
+		{
+		d := {RfTotOn: 0, RfTotUseMs: 2500, RfTotRetryMin: 15
+			, RfApTargets: "Shiny, Sparkling", RfApKey: "e", RfApMax: 50, RfApWaitMs: 900, RfApResultMs: 1600
+			, RfApPos1: "", RfApPos2: ""}
+		for i, df in RfTotDefs()
+			d["RfTotE" . df.id] := 0
+		}
 	return d
 }
 
@@ -20608,57 +20600,156 @@ RfNum(v, def, lo := 0) {
 }
 
 ; ------------------------------------------------------------------------------------------------
-; Auto Totem: up to three totems on their own timers, used just before a cast (in list order, so
-; a Sundial can go before an Aurora), then the rod goes back in hand with the rod hotbar key.
+; Auto Totem (rebuilt in 2.3). The Utilities tab has a switch per event. Just before each cast:
+;  1. the status icons at the bottom right are read (RfTotIcons); a moon there means night;
+;  2. each picked event that is not running gets its totem, found on the hotbar by reading the
+;     slot names with Windows text recognition (RfTotScan); an event that needs night or day gets
+;     a Sundial first when the time is wrong;
+;  3. the icon that appears after a totem is used is remembered as that event's icon (settings.ini
+;     [TotemIcons], so it is known next time too); when it goes away the totem is used again.
+;     When no new icon shows up, the totem is used again after "No icon seen" minutes.
+; One event per group: one time of day (the first picked event that needs one decides), one
+; weather, and one of Mutation / Shiny / Sparkling. Then the rod goes back in hand.
 ; ------------------------------------------------------------------------------------------------
-RfTotemBegin() {
-	global
-	local i, mins
-	Loop 3
-		{
-		i := A_Index
-		mins := RfNum(RfTot%i%Min, 15, 1)
-		RfTotNext%i% := RfTotStart ? 0 : A_TickCount + mins * 60000
-		}
-	RfTotUsed := 0
+RfTotDefs() {
+	static d := ""
+	if (!IsObject(d))
+		d := [{id: "Night", names: ["sundial"], need: "Night", label: "Night  ·  Sundial", tip: "Keeps it night: a Sundial whenever it is day."}
+			, {id: "Day", names: ["sundial"], need: "Day", label: "Day  ·  Sundial", tip: "Keeps it day: a Sundial whenever it is night."}
+			, {id: "Aurora", names: ["aurora"], need: "Night", label: "Aurora  ·  night", tip: "Aurora Totem. Needs night: a Sundial first when it is day."}
+			, {id: "Starfall", names: ["starfall", "meteor"], need: "Night", label: "Starfall  ·  night", tip: "Needs night: a Sundial first when it is day."}
+			, {id: "Eclipse", names: ["eclipse"], need: "Day", label: "Eclipse  ·  day", tip: "Eclipse Totem. Needs day: a Sundial first when it is night."}
+			, {id: "Mutation", names: ["mutation"], grp: "luck", label: "Mutation", tip: "Only one of Mutation, Shiny and Sparkling runs`n(the first one picked)."}
+			, {id: "Clearcast", names: ["clearcast"], grp: "weather", label: "Clearcast  ·  clear", tip: "Only one weather runs (the first one picked)."}
+			, {id: "Tempest", names: ["tempest"], grp: "weather", label: "Tempest  ·  rain", tip: "Only one weather runs (the first one picked)."}
+			, {id: "Windset", names: ["windset"], grp: "weather", label: "Windset  ·  wind", tip: "Only one weather runs (the first one picked)."}
+			, {id: "Smokescreen", names: ["smokescreen"], grp: "weather", label: "Smokescreen  ·  fog", tip: "Only one weather runs (the first one picked)."}
+			, {id: "Shiny", names: ["shiny"], grp: "luck", label: "Shiny", tip: "Only one of Mutation, Shiny and Sparkling runs`n(the first one picked)."}
+			, {id: "Sparkling", names: ["sparkling"], grp: "luck", label: "Sparkling", tip: "Only one of Mutation, Shiny and Sparkling runs`n(the first one picked)."}]
+	return d
 }
 
-; False when the macro was stopped while a totem was being used.
-RfTotemRun() {
+RfTotPicked(id) {
 	global
-	local i, key, mins
+	return (RfTotE%id% ? true : false)
+}
+
+; At the start of each fishing session: forget the hotbar, load the learned icons.
+RfTotemBegin() {
+	global RfTotState, RfTotSlots, RfTotSlotsAt, RfTotUsed, RfTotSunAt, RfTotSunBlock, RfTotNote, RfTotScanTxt, SettingsFile
+	RfTotState := {}, RfTotSlots := {}, RfTotSlotsAt := 0, RfTotUsed := 0, RfTotSunAt := 0, RfTotSunBlock := 0
+	RfTotNote := "", RfTotScanTxt := ""
+	for i, df in RfTotDefs()
+		{
+		IniRead, v, %SettingsFile%, TotemIcons, % df.id, %A_Space%
+		RfTotState[df.id] := {sig: RfTotSigParse(v), on: false, assumeUntil: 0, retryAt: 0, st: ""}
+		}
+}
+
+; False when fishing was stopped while a totem was being used.
+RfTotemRun() {
+	global RfTotOn, RodSlotKey, RfTotState, RfTotNote, RfTip7, RfTip8, RfTotSunAt, RfTotSunBlock, RfTotUseMs
 	if (!RfTotOn)
 		return true
-	Loop 3
+	if (!IsObject(RfTotState))
+		RfTotemBegin()
+	if (Trim(RodSlotKey) = "")
 		{
-		i := A_Index
-		key := Trim(RfTot%i%Key)
-		if (!RfTot%i%On or key = "" or A_TickCount < RfTotNext%i%)
+		RfTotNote := "Needs the rod hotbar key (Settings tab, Recovery)"
+		return true
+		}
+	RfTotNote := ""
+	icons := RfTotIcons()
+	timeNow := RfTotTime(icons)
+	wantTime := "", grpOwner := {}, used := 0
+	for i, df in RfTotDefs()
+		{
+		if (!RfTotPicked(df.id))
 			continue
-		mins := RfNum(RfTot%i%Min, 15, 1)
-		if (Trim(RodSlotKey) = "")
+		if (df.need != "" and wantTime = "")
+			wantTime := df.need, timeOwner := df.id
+		if (df.grp != "" and !grpOwner.HasKey(df.grp))
+			grpOwner[df.grp] := df.id
+		}
+	for i, df in RfTotDefs()
+		{
+		id := df.id, st := RfTotState[id]
+		if (!RfTotPicked(id))
 			{
-			RfTip9 = Auto Totem: set the rod hotbar key (Settings, Recovery)
-			RfTotNext%i% := A_TickCount + 60000
+			st.st := ""
 			continue
 			}
-		RfTip7 = Current Task: Using totem %i% (key %key%)
-		send {lbutton up}
-		send {rbutton up}
-		send {%key%}
-		RfTip8 = Action: Equip totem
-		if (!RfWait(450))
+		if (df.need != "" and df.need != wantTime)
+			{
+			st.st := "waits (" . timeOwner . " keeps it " . RfTotLow(wantTime) . ")"
+			continue
+			}
+		if (df.grp != "" and grpOwner[df.grp] != id)
+			{
+			st.st := "off (" . grpOwner[df.grp] . " is the " . (df.grp = "weather" ? "weather" : "pick") . ")"
+			continue
+			}
+		; Running already?
+		if (df.need != "" and df.need = timeNow and (id = "Night" or id = "Day"))
+			{
+			st.st := "yes"
+			continue
+			}
+		if (id != "Night" and id != "Day" and RfTotActive(id, icons))
+			continue
+		if (A_TickCount < st.retryAt)
+			continue
+		; Time of day first.
+		if (df.need != "" and timeNow != df.need)
+			{
+			if (timeNow = "")
+				{
+				st.st := "can't read the time of day (bottom right icons)"
+				continue
+				}
+			if (A_TickCount < RfTotSunBlock)
+				{
+				st.st := "waits for " . RfTotLow(df.need) . " (Sundial did not change it)"
+				continue
+				}
+			key := RfTotKeyFor(["sundial"])
+			if (key = "")
+				{
+				st.st := "no Sundial Totem on the hotbar", st.retryAt := A_TickCount + 300000
+				continue
+				}
+			r := RfTotSundial(key, df.need, icons)
+			used := used + 1
+			if (r < 0)
+				return false
+			icons := RfTotIcons(), timeNow := RfTotTime(icons)
+			if (!r)
+				{
+				RfTotSunBlock := A_TickCount + 300000
+				st.st := "Sundial used, but it is still " . RfTotLow(timeNow != "" ? timeNow : "unreadable")
+				continue
+				}
+			if (id = "Night" or id = "Day")
+				{
+				st.st := "yes"
+				continue
+				}
+			}
+		key := RfTotKeyFor(df.names)
+		if (key = "")
+			{
+			st.st := "no " . df.id . " Totem on the hotbar", st.retryAt := A_TickCount + 300000
+			continue
+			}
+		r := RfTotUseEvent(df, key, icons)
+		used := used + 1
+		if (r < 0)
 			return false
-		send {lbutton down}
-		sleep 90
-		send {lbutton up}
-		RfTip8 = Action: Use totem
-		RfTotNext%i% := A_TickCount + mins * 60000
-		RfTotUsed += 1
-		KittyLogBuffer .= "[" . A_Hour . ":" . A_Min . ":" . A_Sec . "] totem " . i . " used (key " . key . ")`r`n"
-		if (!RfWait(RfNum(RfTotUseMs, 2500, 300)))
-			return false
-		send {%RodSlotKey%}
+		icons := RfTotIcons(), timeNow := RfTotTime(icons)
+		}
+	if (used)
+		{
+		Send, {%RodSlotKey%}
 		RfTip8 = Action: Rod back in hand
 		if (!RfWait(700))
 			return false
@@ -20666,27 +20757,565 @@ RfTotemRun() {
 	return true
 }
 
+RfTotLow(s) {
+	StringLower, s, s
+	return s
+}
+
+; Is the event's icon showing? Looked at twice, 0.7 s apart, before calling it gone.
+RfTotActive(id, icons) {
+	global RfTotState, RfTotRetryMin
+	st := RfTotState[id]
+	if (IsObject(st.sig))
+		{
+		if (RfTotFind(st.sig, icons))
+			{
+			st.on := true, st.st := "running"
+			return true
+			}
+		if (st.on)
+			{
+			Sleep, 700
+			if (RfTotFind(st.sig, RfTotIcons()))
+				{
+				st.st := "running"
+				return true
+				}
+			}
+		st.on := false
+		}
+	if (A_TickCount < st.assumeUntil)
+		{
+		st.st := "used, no icon seen: again in " . RfFmtTime(st.assumeUntil - A_TickCount, true)
+		return true
+		}
+	return false
+}
+
+RfTotFind(sig, icons) {
+	for i, ic in icons
+		if (RfTotDist(sig, ic) <= 200)
+			return i
+	return 0
+}
+
+; Equip the totem on key and use it. False when fishing stopped.
+RfTotUse(key, what) {
+	global RfTip7, RfTip8, RfTotUsed, RfTotUseMs, KittyLogBuffer, RfTotSlotsAt
+	RfTip7 = Current Task: Using %what% Totem (key %key%)
+	Send, {LButton up}
+	Send, {RButton up}
+	Send, {%key%}
+	RfTip8 = Action: Equip totem
+	if (!RfWait(450))
+		return false
+	Send, {LButton down}
+	Sleep, 90
+	Send, {LButton up}
+	RfTip8 = Action: Use totem
+	RfTotUsed := RfTotUsed + 1
+	RfTotSlotsAt := 0          ; the stack may have run out: read the hotbar again next time
+	KittyLogBuffer .= "[" . A_Hour . ":" . A_Min . ":" . A_Sec . "] totem " . what . " used (key " . key . ")`r`n"
+	return RfWait(RfNum(RfTotUseMs, 2500, 300))
+}
+
+; Sundial towards want ("Night" / "Day"); waits up to 40 s for the time icon to change.
+; 1 = it is want now, 0 = it did not change, -1 = fishing stopped.
+RfTotSundial(key, want, icons) {
+	global RfTotSunAt
+	if (!RfTotUse(key, "Sundial"))
+		return -1
+	RfTotSunAt := A_TickCount
+	t0 := A_TickCount
+	while (A_TickCount - t0 < 40000)
+		{
+		if (RfTotTime(RfTotIcons()) = want)
+			return 1
+		if (!RfWait(1000))
+			return -1
+		}
+	return 0
+}
+
+; Use the event's totem and learn the icon that appears. 1 used, -1 fishing stopped.
+RfTotUseEvent(df, key, before) {
+	global RfTotState, RfTotRetryMin, SettingsFile
+	st := RfTotState[df.id]
+	if (!RfTotUse(key, df.id))
+		return -1
+	t0 := A_TickCount, got := ""
+	while (A_TickCount - t0 < 8000)
+		{
+		now := RfTotIcons()
+		if (IsObject(st.sig) and RfTotFind(st.sig, now))
+			{
+			got := "known"
+			break
+			}
+		got := RfTotNewIcon(before, now, df.id)
+		if (IsObject(got))
+			break
+		if (!RfWait(500))
+			return -1
+		}
+	if (IsObject(got))
+		{
+		st.sig := got
+		v := RfTotSigStr(got)
+		IniWrite, %v%, %SettingsFile%, TotemIcons, % df.id
+		}
+	if (got != "")
+		st.on := true, st.assumeUntil := 0, st.st := "running"
+	else
+		{
+		st.on := false
+		st.assumeUntil := A_TickCount + RfNum(RfTotRetryMin, 15, 1) * 60000
+		st.st := "used, no icon seen: again in " . RfFmtTime(st.assumeUntil - A_TickCount, true)
+		}
+	return 1
+}
+
+; The icon in now that was not in before (and is not the moon or another event's icon); "" if none.
+RfTotNewIcon(before, now, id) {
+	global RfTotState
+	best := "", bestD := 200
+	for i, ic in now
+		{
+		d := 9999
+		for j, b in before
+			d := Min(d, RfTotDist(ic, b))
+		if (d <= 200 or RfTotDist(ic, RfTotMoon()) <= 200)
+			continue
+		for k, st in RfTotState
+			if (k != id and IsObject(st.sig) and RfTotDist(ic, st.sig) <= 200)
+				d := 0
+		if (d > bestD)
+			best := ic, bestD := d
+		}
+	return best
+}
+
+; The moon icon (night), from a 1057 px high Roblox window on 2026-11-09.
+RfTotMoon() {
+	static m := ""
+	if (!IsObject(m))
+		m := RfTotSigParse("0026866995058300392056000093007000036000600003500070000350007300028000392000860002863029820005799997,76,120,2")
+	return m
+}
+
+; "Night" when the moon is one of the three rightmost icons, "Day" when it is not (and at least two
+; icons were read), "" when the row could not be read.
+RfTotTime(icons) {
+	if (icons.Length() < 2)
+		return ""
+	Loop % Min(3, icons.Length())
+		if (RfTotDist(icons[A_Index], RfTotMoon()) <= 200)
+			return "Night"
+	return "Day"
+}
+
+; ---- the status icons ----------------------------------------------------------------------------
+; The icon row sits above the level text at the bottom right: about 87.6-91.5 % down the window
+; and up to 45 % of the window height in from the right edge.
+RfTotIcons() {
+	global WindowWidth, WindowHeight
+	winW := WindowWidth, winH := WindowHeight
+	if (winW < 200 or winH < 200)
+		return []
+	x0 := Max(winW // 2, winW - Round(winH * 0.45)), y0 := Round(winH * 0.876)
+	s := RfGrab("totem", x0, y0, winW - x0, Round(winH * 0.915) - y0)
+	if (!IsObject(s))
+		return []
+	return RfTotIconsIn(s, winH)
+}
+
+; Icons in surface s, right to left: runs of columns holding bright or strongly coloured pixels
+; (gaps of up to 0.3 % of the window height bridged), each {x, w, top, h, g, a, hue, sat}.
+; Thresholds follow the strip's median brightness, as the game world behind it varies.
+RfTotIconsIn(s, winH) {
+	sw := s.w, sh := s.h
+	if (sw < 8 or sh < 8)
+		return []
+	hl := [], hm := []
+	Loop 256
+		hl[A_Index - 1] := 0, hm[A_Index - 1] := 0
+	n := 0, y := 0
+	while (y < sh)
+		{
+		x := 0, row := s.p + y * sw * 4
+		while (x < sw)
+			{
+			px := NumGet(row + 0, x * 4, "UInt")
+			b := px & 0xFF, g := (px >> 8) & 0xFF, r := (px >> 16) & 0xFF
+			l := (r + g + b) // 3, m := Max(r, g, b)
+			hl[l] := hl[l] + 1, hm[m] := hm[m] + 1, n := n + 1
+			x := x + 2
+			}
+		y := y + 2
+		}
+	medL := RfTotMedian(hl, n), medM := RfTotMedian(hm, n)
+	thrL := Min(230, Max(170, medL + 60)), thrM := Max(150, medM + 50)
+	VarSetCapacity(mask, sw * sh, 0)
+	col := []
+	x := 0
+	while (x < sw)
+		col[x] := 0, x := x + 1
+	y := 0
+	while (y < sh)
+		{
+		x := 0, row := s.p + y * sw * 4
+		while (x < sw)
+			{
+			px := NumGet(row + 0, x * 4, "UInt")
+			b := px & 0xFF, g := (px >> 8) & 0xFF, r := (px >> 16) & 0xFF
+			m := Max(r, g, b), mn := Min(r, g, b)
+			if ((r + g + b) // 3 >= thrL or (m >= thrM and (m - mn) * 100 >= 35 * m))
+				{
+				NumPut(1, mask, y * sw + x, "UChar")
+				col[x] := col[x] + 1
+				}
+			x := x + 1
+			}
+		y := y + 1
+		}
+	gap := Max(2, Round(winH * 0.003))
+	runs := [], a := -1, last := -1
+	x := 0
+	while (x < sw)
+		{
+		if (col[x] > 0)
+			{
+			if (a >= 0 and x - last - 1 > gap)
+				runs.Push([a, last]), a := -1
+			if (a < 0)
+				a := x
+			last := x
+			}
+		x := x + 1
+		}
+	if (a >= 0)
+		runs.Push([a, last])
+	icons := []
+	i := runs.Length()
+	while (i >= 1)
+		{
+		ic := RfTotDescribe(s, mask, runs[i][1], runs[i][2], winH)
+		if (IsObject(ic))
+			icons.Push(ic)
+		i := i - 1
+		}
+	return icons
+}
+
+RfTotMedian(hist, n) {
+	acc := 0, half := n // 2
+	Loop 256
+		{
+		acc := acc + hist[A_Index - 1]
+		if (acc >= half)
+			return A_Index - 1
+		}
+	return 255
+}
+
+; One icon between columns a and z: its box, a 10 x 10 grid of how full each cell is (0-9), its
+; width / height in % and the hue / saturation of its average colour. "" if it is not icon-sized.
+RfTotDescribe(s, ByRef mask, a, z, winH) {
+	sw := s.w, sh := s.h
+	top := -1, bot := -1, y := 0
+	while (y < sh)
+		{
+		x := a
+		while (x <= z)
+			{
+			if (NumGet(mask, y * sw + x, "UChar"))
+				{
+				if (top < 0)
+					top := y
+				bot := y
+				break
+				}
+			x := x + 1
+			}
+		y := y + 1
+		}
+	iw := z - a + 1, ih := bot - top + 1
+	if (top < 0 or ih < winH * 0.012 or iw < winH * 0.004 or iw > winH * 0.07 or ih > winH * 0.06)
+		return ""
+	cnt := [], area := []
+	Loop 100
+		cnt[A_Index - 1] := 0, area[A_Index - 1] := 0
+	sr := 0, sg := 0, sb := 0, fg := 0
+	y := top
+	while (y <= bot)
+		{
+		cy := (y - top) * 10 // ih
+		x := a
+		while (x <= z)
+			{
+			c := cy * 10 + (x - a) * 10 // iw
+			area[c] := area[c] + 1
+			if (NumGet(mask, y * sw + x, "UChar"))
+				{
+				cnt[c] := cnt[c] + 1, fg := fg + 1
+				px := NumGet(s.p + 0, (y * sw + x) * 4, "UInt")
+				sb := sb + (px & 0xFF), sg := sg + ((px >> 8) & 0xFF), sr := sr + ((px >> 16) & 0xFF)
+				}
+			x := x + 1
+			}
+		y := y + 1
+		}
+	if (fg < 12)
+		return ""
+	grid := ""
+	Loop 100
+		{
+		c := A_Index - 1
+		grid .= area[c] ? Round(9 * cnt[c] / area[c]) : 0
+		}
+	hs := RfTotHueSat(sr // fg, sg // fg, sb // fg)
+	return {x: a, w: iw, top: top, h: ih, g: grid, a: Round(iw * 100 / ih), hue: hs[1], sat: hs[2]}
+}
+
+RfTotHueSat(r, g, b) {
+	m := Max(r, g, b), mn := Min(r, g, b), d := m - mn
+	if (m = 0 or d = 0)
+		return [0, 0]
+	if (m = r)
+		h := Mod(60 * (g - b) / d + 360, 360)
+	else if (m = g)
+		h := 60 * (b - r) / d + 120
+	else
+		h := 60 * (r - g) / d + 240
+	return [Round(h), Round(d * 100 / m)]
+}
+
+; How different two icons look: grid cells (0-900) + half the width / height difference in % +
+; colour (60 when only one is coloured, else half the hue difference in degrees). The same icon
+; at 0.75-1.33x size measured 37-127, different icons 325 or more; 200 or less counts as the same.
+RfTotDist(p, q) {
+	d := 0
+	Loop 100
+		d := d + Abs(SubStr(p.g, A_Index, 1) - SubStr(q.g, A_Index, 1))
+	d := d + Abs(p.a - q.a) // 2
+	cp := (p.sat >= 20), cq := (q.sat >= 20)
+	if (cp != cq)
+		d := d + 60
+	else if (cp)
+		{
+		hd := Abs(p.hue - q.hue)
+		d := d + Min(hd, 360 - hd) // 2
+		}
+	return d
+}
+
+RfTotSigStr(ic) {
+	return ic.g . "," . ic.a . "," . ic.hue . "," . ic.sat
+}
+
+RfTotSigParse(str) {
+	p := StrSplit(str, ",")
+	if (p.Length() < 4 or StrLen(p[1]) != 100)
+		return ""
+	return {g: p[1], a: p[2] + 0, hue: p[3] + 0, sat: p[4] + 0}
+}
+
+; ---- the hotbar ------------------------------------------------------------------------------------
+; The hotbar key of the first totem whose name matches one of names; reads the hotbar when it has
+; not been read since the last totem was used. "" when none is there.
+RfTotKeyFor(names) {
+	global RfTotSlots, RfTotSlotsAt
+	if (!RfTotSlotsAt)
+		RfTotScan()
+	for i, nm in names
+		if (RfTotSlots.HasKey(nm))
+			return RfTotSlots[nm]
+	return ""
+}
+
+; Reads every hotbar slot's text with Windows text recognition. The slots are found by their
+; numbers (small white digits along the top of each slot, 93.8-94.4 % down the window); a slot
+; starts 0.66 % of the window height left of its number and is 6.3 % wide (measured at 1057 px
+; high: slots 69 px apart, centred at the bottom). If no numbers are seen, nine centred slots are
+; assumed. A slot's key is the number read from its text, else its place from the left.
+RfTotScan() {
+	global RfTotSlots, RfTotSlotsAt, RfTotNote, RfTotScanTxt, WindowWidth, WindowHeight, KittyLogBuffer
+	RfTotSlots := {}, RfTotSlotsAt := A_TickCount
+	if (!RfTextEnsure(8000))
+		{
+		RfTotNote := "Windows text reading is not available, so the hotbar can't be read"
+		return false
+		}
+	winW := WindowWidth, winH := WindowHeight
+	if (winW < 200 or winH < 200)
+		return false
+	lefts := RfTotSlotLefts(), how := "numbers seen"
+	if (!lefts.Length())
+		{
+		how := "assumed 9 slots"
+		Loop 9
+			lefts.Push(Round(winW / 2 + (A_Index - 5) * winH * 0.0653 - winH * 0.0316))
+		}
+	log := ""
+	for i, x in lefts
+		{
+		fx := (x + winH * 0.001) / winW, fw := winH * 0.061 / winW
+		if (fx < 0 or fx + fw > 1)
+			continue
+		txt := RfOcrArea(fx, 0.936, fw, 0.061, 3000)
+		d := RegExMatch(txt, "^\s*(\d)", m) ? ((m1 = 0) ? 10 : m1 + 0) : 0
+		nm := RfTotNameIn(txt)
+		log .= " [" . i . "] " . RegExReplace(txt, "\s+", " ")
+		if (nm = "" or RfTotSlots.HasKey(nm))
+			continue
+		v := d ? d : i
+		if (v >= 1 and v <= 10)
+			RfTotSlots[nm] := (v = 10) ? "0" : v
+		}
+	found := ""
+	for nm, key in RfTotSlots
+		found .= nm . "=" . key . " "
+	RfTotScanTxt := (found = "") ? "no totems found" : Trim(found)
+	KittyLogBuffer .= "[" . A_Hour . ":" . A_Min . ":" . A_Sec . "] totem hotbar (" . how . "): " . RfTotScanTxt . "  read:" . log . "`r`n"
+	return true
+}
+
+; Left edges (client x) of the hotbar slots, from the slot numbers.
+RfTotSlotLefts() {
+	global WindowWidth, WindowHeight
+	winW := WindowWidth, winH := WindowHeight
+	x0 := Max(0, Round(winW / 2 - winH * 0.36)), x1 := Min(winW - 1, Round(winW / 2 + winH * 0.36))
+	y0 := Round(winH * 0.9376), y1 := Round(winH * 0.9442)
+	s := RfGrab("totembar", x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+	if (!IsObject(s))
+		return []
+	return RfTotDigitsIn(s, winH, x0)
+}
+
+; Slot numbers in surface s: runs of columns with white pixels (1 px gaps bridged), at most 1.2 %
+; of the window height wide, with 4 or more white pixels over 3 or more rows. Returns each slot's
+; left edge (the number's left edge - 0.66 % of the height, + x0).
+RfTotDigitsIn(s, winH, x0) {
+	sw := s.w, sh := Min(s.h, 60)
+	cnt := [], rws := []
+	x := 0
+	while (x < sw)
+		{
+		c := 0, rm := 0, y := 0
+		while (y < sh)
+			{
+			px := NumGet(s.p + 0, (y * s.w + x) * 4, "UInt")
+			b := px & 0xFF, g := (px >> 8) & 0xFF, r := (px >> 16) & 0xFF
+			if (Min(r, g, b) >= 190 and Max(r, g, b) - Min(r, g, b) < 60)
+				c := c + 1, rm := rm | (1 << y)
+			y := y + 1
+			}
+		cnt[x] := c, rws[x] := rm
+		x := x + 1
+		}
+	lefts := [], maxW := Max(3, Round(winH * 0.012)), back := Round(winH * 0.0066)
+	a := -1, last := -1, tot := 0, rm := 0
+	x := 0
+	while (x <= sw)
+		{
+		on := (x < sw and cnt[x] > 0)
+		if (a >= 0 and (x = sw or (on and x - last - 1 > 1) or (!on and x - last > 1)))
+			{
+			nr := 0, t := rm
+			while (t)
+				nr := nr + (t & 1), t := t >> 1
+			if (last - a + 1 <= maxW and tot >= 4 and nr >= 3)
+				lefts.Push(x0 + a - back)
+			a := -1, tot := 0, rm := 0
+			}
+		if (on)
+			{
+			if (a < 0)
+				a := x
+			last := x, tot := tot + cnt[x], rm := rm | rws[x]
+			}
+		x := x + 1
+		}
+	return lefts
+}
+
+; Which totem a slot's text names ("" if none): it must say Totem and one of the totem names, a
+; letter off at most (u/v, i/l, 0/o and 5/s are not told apart: the game's font trips the reader).
+RfTotNameIn(txt) {
+	static kws := ["sundial", "aurora", "starfall", "meteor", "eclipse", "mutation", "clearcast", "tempest", "windset", "smokescreen", "shiny", "sparkling"]
+	t := RfTotFold(txt)
+	if (t = "")
+		return ""
+	joined := StrReplace(t, " ")
+	if (!InStr(joined, "totem") and !RfTotWordNear(t, "totem"))
+		return ""
+	for i, kw in kws
+		if (InStr(joined, RfTotFold(kw)))
+			return kw
+	for i, kw in kws
+		if (RfTotWordNear(t, RfTotFold(kw)))
+			return kw
+	return ""
+}
+
+RfTotWordNear(t, f) {
+	Loop, Parse, t, %A_Space%
+		if (StrLen(A_LoopField) >= 4 and RfTotLev(A_LoopField, f) <= StrLen(f) // 4)
+			return true
+	return false
+}
+
+RfTotFold(s) {
+	StringLower, s, s
+	s := RegExReplace(s, "[^a-z0-9]+", " ")
+	s := StrReplace(s, "0", "o"), s := StrReplace(s, "5", "s"), s := StrReplace(s, "1", "l")
+	s := StrReplace(s, "rn", "m"), s := StrReplace(s, "u", "v"), s := StrReplace(s, "i", "l")
+	return Trim(s)
+}
+
+RfTotLev(p, q) {
+	lp := StrLen(p), lq := StrLen(q)
+	prev := []
+	Loop % lq + 1
+		prev[A_Index - 1] := A_Index - 1
+	Loop % lp
+		{
+		i := A_Index, cur := [], cur[0] := i
+		cp := SubStr(p, i, 1)
+		Loop % lq
+			{
+			j := A_Index
+			cur[j] := Min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (cp = SubStr(q, j, 1) ? 0 : 1))
+			}
+		prev := cur
+		}
+	return prev[lq]
+}
+
 RfTotemStatus() {
-	global
-	local i, best, bi, left
+	global RfTotOn, RodSlotKey, MacroRunning, RfTotState, RfTotNote, RfTotUsed, RfTotScanTxt
 	if (!RfTotOn)
 		return "Off"
 	if (Trim(RodSlotKey) = "")
 		return "Needs the rod hotbar key (Settings tab, Recovery)"
-	if (!MacroRunning)
-		return "On  ·  " . (RfTotStart ? "used when fishing starts, then on their timers" : "first use one interval after fishing starts")
-	best := "", bi := 0
-	Loop 3
+	n := 0, parts := ""
+	for i, df in RfTotDefs()
 		{
-		if (!RfTot%A_Index%On or Trim(RfTot%A_Index%Key) = "")
+		if (!RfTotPicked(df.id))
 			continue
-		if (best = "" or RfTotNext%A_Index% < best)
-			best := RfTotNext%A_Index%, bi := A_Index
+		n := n + 1
+		st := IsObject(RfTotState) ? RfTotState[df.id].st : ""
+		if (MacroRunning and st != "")
+			parts .= (parts = "" ? "" : "   ·   ") . df.id . ": " . st
 		}
-	if (!bi)
-		return "On, but no totem has a key"
-	left := Max(0, best - A_TickCount)
-	return "Next: totem " . bi . " in " . RfFmtTime(left, true) . "   ·   used " . RfTotUsed . " this session"
+	if (!n)
+		return "On, but no event is picked"
+	if (!MacroRunning)
+		return "On  ·  " . n . " event" . (n = 1 ? "" : "s") . " picked; checked before each cast"
+	if (RfTotNote != "")
+		return RfTotNote
+	return (parts = "" ? "Checking before the next cast" : parts) . "   ·   " . RfTotUsed . " used"
+		. (RfTotScanTxt != "" ? "   ·   hotbar: " . RfTotScanTxt : "")
 }
 
 ; ------------------------------------------------------------------------------------------------
