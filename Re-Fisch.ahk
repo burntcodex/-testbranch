@@ -1,6 +1,6 @@
 ﻿;====================================================================================================;
 ;
-;   Re:Fisch  -  Alpha 2.3
+;   Re:Fisch  -  Alpha 2.4
 ;   A fishing macro for Fisch (Roblox). Made by bai. Personal use.
 ;
 ;   CREDITS  (also shown in the About tab)
@@ -61,7 +61,7 @@
 #MaxThreadsPerHotkey 2
 
 DFBetaVersion := "1.1.7-refisch-r10.3-ui-restore"
-RfVersion := "Alpha 2.3"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
+RfVersion := "Alpha 2.4"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
 
 setkeydelay, -1
 setmousedelay, -1
@@ -20265,7 +20265,7 @@ if (RfOvWant)
 	; follow the Roblox window if it moves or is maximised
 	RfClientArea(RobloxHwnd, RfRx, RfRy, RfRw, RfRh)
 	RfOvRect := RfRx . "|" . RfRy . "|" . RfRw . "|" . RfRh
-	RfOvNewSig := RfOvState . "|" . RfOvPulse . "|" . RfOvKeysTxt . "|" . RfOvTaskTxt . "|" . RfOvDetail . "|" . RfSesCasts . "|" . RfSesFail . "|" . RfOvTimeTxt . "|" . RfOvRect
+	RfOvNewSig := RfOvState . "|" . RfOvPulse . "|" . RfOvKeysTxt . "|" . RfOvTaskTxt . "|" . RfOvDetail . "|" . RfSesCasts . "|" . RfSesFights . "|" . RfSesFail . "|" . RfOvTimeTxt . "|" . RfOvRect
 	; Layered-window drawing shares the reel thread. During a fight, render at
 	; most four times a second; show/hide and the input watchdog stay responsive.
 	if ((RfOvNewSig != RfOvSig or !RfOvShown) and (!RfOvShown or !MgInPlay or A_TickCount - RfOvRenderAt >= 250))
@@ -20274,7 +20274,7 @@ if (RfOvWant)
 		RfOvSig := RfOvNewSig
 		RfOvX := RfRx + Round(RfRw * 0.02)
 		RfOvY2 := RfRy + Round(RfRh * 0.5) - Round(180 * DpiF)
-		RfOvRender(RfOvX, RfOvY2, {state: RfOvState, task: RfOvTaskTxt, detail: RfOvDetail, casts: RfSesCasts
+		RfOvRender(RfOvX, RfOvY2, {state: RfOvState, task: RfOvTaskTxt, detail: RfOvDetail, casts: RfSesCasts, fights: RfSesFights
 			, fails: RfSesFail, time: RfOvTimeTxt, pulse: RfOvPulse
 			, keys: [[StartStopKey, MacroRunning ? "stop" : "start"], [ReloadKey, "reload"], [ExitKey, "exit"]]})
 		if (!RfOvShown)
@@ -20296,29 +20296,39 @@ if (RfUiN = 0 and RfActiveTab = "Utilities" and DllCall("IsWindowVisible", "Ptr"
 return
 
 ; ------------------------------------------------------------------------------------------------
-; Status overlay, drawn like the main window: a rounded panel, a "RE:FISCH" card header, a state
-; chip like the sidebar's (Ready / Running / Appraising), the current task and details, three stat
-; tiles and the keys as key caps. x, y are screen pixels; o holds what to show.
+; Status overlay (redrawn in 2.4), in the main window's style: a soft shadow, a rounded panel lit
+; from the top in the state's colour, the logo and name with the version, a state pill (Ready /
+; Running / Appraising, its dot breathing while Ready), the current task with its details, one
+; stats card (casts, fights, time-outs, time) and the keys as key caps in a footer. x, y are the
+; panel's screen pixels; o holds what to show.
 ; ------------------------------------------------------------------------------------------------
 RfOvRender(x, y, o) {
 	global DpiF, hRfOv, ColorPanel, ColorCard, ColorEdge, ColorText, ColorMuted, ColorDim, ColorAccent
-		, ColorGreen, ColorAmber, ColorInfo
+		, ColorGreen, ColorAmber, ColorInfo, RfVersion
 	k := DpiF
-	pw := Round(252 * k), pad := 14 * k
+	sh := Round(14 * k)                                  ; room around the panel for its shadow
+	pw := Round(280 * k), pad := 16 * k
 	lines := []
 	if (o.detail != "")
 		Loop, Parse, % o.detail, `n
-			lines.Push(A_LoopField)
-	; heights (pixels)
-	yHead := 12 * k, yTask := 40 * k
-	yDet := yTask + 26 * k
-	yTiles := yDet + lines.Length() * 15 * k + (lines.Length() ? 8 * k : 0)
-	tileH := 48 * k
-	yKeys := yTiles + tileH + 10 * k
-	ph := Round(yKeys + 20 * k + 12 * k)
+			if (A_LoopField != "")
+				lines.Push(A_LoopField)
+	st := o.state
+	cc := (st = "run") ? ColorGreen : (st = "appraise") ? ColorInfo : ColorAmber
+	ct := (st = "run") ? "Running" : (st = "appraise") ? "Appraising" : "Ready"
+	if (st = "run" and o.task = "Paused")
+		cc := ColorAmber, ct := "Paused"
+	; layout, in pixels from the panel's top
+	yHead := 14 * k, headH := 24 * k
+	yTask := yHead + headH + 14 * k, taskH := 26 * k
+	yDet := yTask + taskH + 1 * k, detH := 16 * k
+	yStats := yDet + lines.Length() * detH + 12 * k, statH := 52 * k
+	yFoot := yStats + statH + 14 * k, footH := 20 * k
+	ph := Round(yFoot + 1 + 12 * k + footH + 14 * k)
+	sw := pw + 2 * sh, sht := ph + 2 * sh
 	; surface
 	VarSetCapacity(bi, 40, 0)
-	NumPut(40, bi, 0, "UInt"), NumPut(pw, bi, 4, "Int"), NumPut(-ph, bi, 8, "Int")
+	NumPut(40, bi, 0, "UInt"), NumPut(sw, bi, 4, "Int"), NumPut(-sht, bi, 8, "Int")
 	NumPut(1, bi, 12, "UShort"), NumPut(32, bi, 14, "UShort")
 	hdcS := DllCall("GetDC", "Ptr", 0, "Ptr")
 	mdc := DllCall("CreateCompatibleDC", "Ptr", hdcS, "Ptr")
@@ -20332,53 +20342,89 @@ RfOvRender(x, y, o) {
 		{
 		DllCall("gdiplus\GdipSetSmoothingMode", "Ptr", g, "Int", 4)
 		DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", g, "Int", 4)
-		; panel
-		RfOvShape(g, 0, 0, pw, ph, 12 * k, ColorPanel, 242, ColorEdge)
-		; header + state chip
-		RfGdipDraw(g, "RE:FISCH", RfGdipFont("Segoe UI", 8, 1), ColorAccent, pad, 20 * k, yHead / k)
-		st := o.state
-		cc := (st = "run") ? ColorGreen : (st = "appraise") ? ColorInfo : ColorAmber
-		ct := (st = "run") ? "Running" : (st = "appraise") ? "Appraising" : "Ready"
-		cf := RfFontFor("", 8)
-		cw := RfGdipTextW(g, ct, cf) + 30 * k
-		cx := pw - pad - cw
-		RfOvShape(g, cx, yHead - 1 * k, cw, 22 * k, 11 * k, RfMix(ColorPanel, cc, 0.14), 255, RfMix(ColorPanel, cc, 0.45))
-		dot := 7 * k
-		RfOvShape(g, cx + 10 * k, yHead + 10 * k - dot / 2, dot, dot, dot / 2, o.pulse ? cc : RfMix(ColorPanel, cc, 0.4), 255, "")
-		RfGdipDraw(g, ct, cf, cc, cx + 22 * k, 20 * k, yHead / k)
-		; task and details
-		tf := RfFontFor("", 11)
-		RfGdipDraw(g, RfOvFit(g, o.task, tf, pw - 2 * pad), tf, "FFFFFF", pad, 24 * k, yTask / k)
-		df := RfGdipFont("Segoe UI", 8)
-		for i, ln in lines
-			RfGdipDraw(g, RfOvFit(g, ln, df, pw - 2 * pad), df, ColorMuted, pad, 15 * k, (yDet + (i - 1) * 15 * k) / k)
-		; stat tiles
-		gap := 6 * k
-		tw := (pw - 2 * pad - 2 * gap) / 3
-		lf := RfGdipFont("Segoe UI", 7, 1), vf := RfFontFor("", 13)
-		for i, t in [["CASTS", o.casts, "FFFFFF"], ["TIME-OUTS", o.fails, ColorAmber], ["TIME", o.time, "FFFFFF"]]
+		DllCall("gdiplus\GdipSetInterpolationMode", "Ptr", g, "Int", 7)
+		DllCall("gdiplus\GdipTranslateWorldTransform", "Ptr", g, "Float", sh, "Float", sh, "Int", 0)
+		; shadow: rings of faint black, wider and fainter outwards, a little lower than the panel
+		Loop % sh
 			{
-			tx := pad + (i - 1) * (tw + gap)
-			RfOvShape(g, tx, yTiles, tw, tileH, 8 * k, ColorCard, 255, ColorEdge)
-			RfGdipDraw(g, t[1], lf, ColorMuted, tx + 10 * k, 14 * k, (yTiles + 7 * k) / k)
-			RfGdipDraw(g, t[2], vf, t[3], tx + 10 * k, 24 * k, (yTiles + 20 * k) / k)
+			i := sh - A_Index + 1
+			RfOvShape(g, -i, -i + 3 * k, pw + 2 * i, ph + 2 * i, 14 * k + i, "000000", Round(2 + 26 * (1 - i / sh) ** 2), "")
 			}
-		; key caps
-		kf := RfFontFor("", 8), nf := RfGdipFont("Segoe UI", 8)
-		kx := pad
+		; panel: lighter at the top, the state's colour glowing down from the top edge
+		path := RfGdipRoundPath(0.5, 0.5, pw - 1, ph - 1, 14 * k)
+		RfOvGrad(g, path, 0, ph, RfMix(ColorPanel, "FFFFFF", 0.045), 246, ColorPanel, 246)
+		DllCall("gdiplus\GdipSetClipPath", "Ptr", g, "Ptr", path, "Int", 0)
+		RfOvGrad(g, path, 0, 70 * k, cc, 34, cc, 0)
+		RfOvRect(g, 0, 0, pw, 2 * k, cc, 200)
+		DllCall("gdiplus\GdipResetClip", "Ptr", g)
+		pen := 0
+		DllCall("gdiplus\GdipCreatePen1", "UInt", RfArgb(RfMix(ColorEdge, "FFFFFF", 0.06)), "Float", 1.0, "Int", 2, "Ptr*", pen)
+		DllCall("gdiplus\GdipDrawPath", "Ptr", g, "Ptr", pen, "Ptr", path)
+		DllCall("gdiplus\GdipDeletePen", "Ptr", pen)
+		DllCall("gdiplus\GdipDeletePath", "Ptr", path)
+		; header: logo, name, version
+		lg := Round(24 * k)
+		if (!RfOvLogo(g, pad, yHead + (headH - lg) / 2, lg))
+			RfOvShape(g, pad, yHead + (headH - lg) / 2, lg, lg, 6 * k, ColorAccent, 255, "")
+		nf := RfFontFor("", 10.5), vf := RfGdipFont("Segoe UI", 7.5)
+		tx := pad + lg + 9 * k
+		RfOvText(g, "Re:Fisch", nf, "FFFFFF", tx, yHead, headH)
+		RfOvText(g, RfVersion, vf, RfMix(ColorDim, ColorMuted, 0.45), tx + RfGdipTextW(g, "Re:Fisch", nf) + 7 * k, yHead + 1 * k, headH)
+		; state pill
+		cf := RfFontFor("", 8)
+		cw := RfGdipTextW(g, ct, cf) + 32 * k, chh := 24 * k
+		cx := pw - pad - cw, cy := yHead + (headH - chh) / 2
+		RfOvShape(g, cx, cy, cw, chh, chh / 2, RfMix(ColorPanel, cc, 0.16), 255, RfMix(ColorPanel, cc, 0.42))
+		dot := 7 * k, dx := cx + 12 * k, dy := cy + chh / 2
+		if (o.pulse)
+			RfOvShape(g, dx - dot, dy - dot, dot * 2, dot * 2, dot, cc, 50, "")
+		RfOvShape(g, dx - dot / 2, dy - dot / 2, dot, dot, dot / 2, o.pulse ? cc : RfMix(ColorPanel, cc, 0.45), 255, "")
+		RfOvText(g, ct, cf, cc, cx + 23 * k, cy, chh)
+		; task (in Ready, the start key is drawn as a key cap) and details
+		tf := RfFontFor("", 13)
+		if (st = "ready" and RegExMatch(o.task, "^Press (.+) to start$", m))
+			{
+			RfOvText(g, "Press", tf, "FFFFFF", pad, yTask, taskH)
+			kx := pad + RfGdipTextW(g, "Press", tf) + 8 * k
+			kx := kx + RfOvCap(g, m1, kx, yTask + 1 * k, taskH - 2 * k, RfFontFor("", 11)) + 8 * k
+			RfOvText(g, "to start", tf, "FFFFFF", kx, yTask, taskH)
+			}
+		else
+			RfOvText(g, RfOvFit(g, o.task, tf, pw - 2 * pad), tf, "FFFFFF", pad, yTask, taskH)
+		df := RfGdipFont("Segoe UI", 8.5)
+		for i, ln in lines
+			RfOvText(g, RfOvFit(g, ln, df, pw - 2 * pad), df, ColorMuted, pad, yDet + (i - 1) * detH, detH)
+		; stats card: four columns split by hairlines
+		cardW := pw - 2 * pad
+		RfOvShape(g, pad, yStats, cardW, statH, 10 * k, RfMix(ColorCard, "000000", 0.15), 230, ColorEdge)
+		lf := RfGdipFont("Segoe UI", 6.5, 1), sf := RfFontFor("", 13)
+		stats := [["CASTS", o.casts, "FFFFFF"], ["FIGHTS", o.fights, "FFFFFF"]
+			, ["TIME-OUTS", o.fails, (o.fails > 0) ? ColorAmber : "FFFFFF"], ["TIME", o.time, "FFFFFF"]]
+		colW := cardW / stats.Length()
+		for i, t in stats
+			{
+			c0 := pad + (i - 1) * colW
+			if (i > 1)
+				RfOvRect(g, c0, yStats + 12 * k, 1, statH - 24 * k, ColorEdge, 255)
+			RfOvText(g, t[1], lf, ColorDim, c0 + (colW - RfGdipTextW(g, t[1], lf)) / 2, yStats + 8 * k, 14 * k)
+			RfOvText(g, t[2], sf, t[3], c0 + (colW - RfGdipTextW(g, t[2], sf)) / 2, yStats + 22 * k, 24 * k)
+			}
+		; footer: hairline, then the keys
+		RfOvRect(g, pad, yFoot, pw - 2 * pad, 1, ColorEdge, 255)
+		kf := RfFontFor("", 8), af := RfGdipFont("Segoe UI", 8)
+		kx := pad, ky := yFoot + 1 + 12 * k
 		for i, kp in o.keys
 			{
-			kw := Max(18 * k, RfGdipTextW(g, kp[1], kf) + 12 * k)
-			RfOvShape(g, kx, yKeys, kw, 20 * k, 5 * k, "242428", 255, "34343A")
-			RfGdipDraw(g, kp[1], kf, ColorText, kx + (kw - RfGdipTextW(g, kp[1], kf)) / 2, 20 * k, yKeys / k)
-			kx += kw + 6 * k
-			RfGdipDraw(g, kp[2], nf, ColorMuted, kx, 20 * k, yKeys / k)
-			kx += RfGdipTextW(g, kp[2], nf) + 14 * k
+			if (Trim(kp[1]) = "")
+				continue
+			kx := kx + RfOvCap(g, kp[1], kx, ky, footH, kf) + 7 * k
+			RfOvText(g, kp[2], af, ColorMuted, kx, ky, footH)
+			kx := kx + RfGdipTextW(g, kp[2], af) + 16 * k
 			}
 		DllCall("gdiplus\GdipDeleteGraphics", "Ptr", g)
 		}
-	VarSetCapacity(pt, 8), NumPut(x, pt, 0, "Int"), NumPut(y, pt, 4, "Int")
-	VarSetCapacity(sz, 8), NumPut(pw, sz, 0, "Int"), NumPut(ph, sz, 4, "Int")
+	VarSetCapacity(pt, 8), NumPut(x - sh, pt, 0, "Int"), NumPut(y - sh, pt, 4, "Int")
+	VarSetCapacity(sz, 8), NumPut(sw, sz, 0, "Int"), NumPut(sht, sz, 4, "Int")
 	VarSetCapacity(src, 8, 0)
 	DllCall("UpdateLayeredWindow", "Ptr", hRfOv, "Ptr", hdcS, "Ptr", &pt, "Ptr", &sz, "Ptr", mdc, "Ptr", &src
 		, "UInt", 0, "UInt*", 0x01FF0000, "UInt", 2)
@@ -20386,6 +20432,121 @@ RfOvRender(x, y, o) {
 	DllCall("DeleteObject", "Ptr", hbm)
 	DllCall("DeleteDC", "Ptr", mdc)
 	DllCall("ReleaseDC", "Ptr", 0, "Ptr", hdcS)
+}
+
+; Text at pixel position x, y in a box ht pixels high (centred in it).
+RfOvText(g, text, font, color, x, y, ht) {
+	global DpiF
+	RfGdipDraw(g, text, font, color, x, ht, y / DpiF)
+}
+
+; A key cap with text t at x, y, ht pixels high; returns its width.
+RfOvCap(g, t, x, y, ht, font) {
+	global DpiF, ColorText
+	k := DpiF
+	tw := RfGdipTextW(g, t, font)
+	w := Max(ht, tw + 14 * k)
+	RfOvShape(g, x, y + 1 * k, w, ht, 6 * k, "0A0A0B", 255, "")           ; its lower edge
+	RfOvShape(g, x, y, w, ht - 1 * k, 6 * k, "26262B", 255, "3A3A41")
+	RfOvText(g, t, font, ColorText, x + (w - tw) / 2, y, ht - 1 * k)
+	return w
+}
+
+; A plain rectangle: fill (RRGGBB) at alpha a.
+RfOvRect(g, x, y, w, ht, fill, a) {
+	br := 0
+	DllCall("gdiplus\GdipCreateSolidFill", "UInt", (RfArgb(fill) & 0xFFFFFF) | (a << 24), "Ptr*", br)
+	DllCall("gdiplus\GdipFillRectangle", "Ptr", g, "Ptr", br, "Float", x, "Float", y, "Float", w, "Float", ht)
+	DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
+}
+
+; Fills path with a top-to-bottom gradient from c1 (alpha a1) at y0 to c2 (alpha a2) at y1.
+RfOvGrad(g, path, y0, y1, c1, a1, c2, a2) {
+	VarSetCapacity(p1, 8, 0), VarSetCapacity(p2, 8, 0)
+	NumPut(0.0, p1, 0, "Float"), NumPut(y0 - 0.5, p1, 4, "Float")
+	NumPut(0.0, p2, 0, "Float"), NumPut(y1 + 0.5, p2, 4, "Float")
+	br := 0
+	DllCall("gdiplus\GdipCreateLineBrush", "Ptr", &p1, "Ptr", &p2
+		, "UInt", (RfArgb(c1) & 0xFFFFFF) | (a1 << 24), "UInt", (RfArgb(c2) & 0xFFFFFF) | (a2 << 24), "Int", 3, "Ptr*", br)
+	DllCall("gdiplus\GdipFillPath", "Ptr", g, "Ptr", br, "Ptr", path)
+	DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
+}
+
+; The Re:Fisch logo at x, y, s pixels square (loaded once per size from ReFisch-logo.ico).
+; False when it can't be loaded.
+RfOvLogo(g, x, y, s) {
+	global ReFishIcoPath
+	static bms := {}
+	if (!bms.HasKey(s))
+		{
+		bm := 0
+		if (FileExist(ReFishIcoPath))
+			{
+			hi := DllCall("LoadImage", "Ptr", 0, "Str", ReFishIcoPath, "UInt", 1, "Int", s, "Int", s, "UInt", 0x10, "Ptr")
+			if (hi)
+				{
+				bm := RfOvIconBitmap(hi, s)
+				DllCall("DestroyIcon", "Ptr", hi)
+				}
+			}
+		bms[s] := bm
+		}
+	if (!bms[s])
+		return false
+	DllCall("gdiplus\GdipDrawImageRectI", "Ptr", g, "Ptr", bms[s], "Int", Round(x), "Int", Round(y), "Int", s, "Int", s)
+	return true
+}
+
+; A GDI+ bitmap with the icon's own transparency (GdipCreateBitmapFromHICON drops it): its colour
+; bitmap is read as 32-bit ARGB; an icon without alpha falls back to GdipCreateBitmapFromHICON.
+RfOvIconBitmap(hi, s) {
+	VarSetCapacity(ii, 8 + 3 * A_PtrSize, 0)
+	if (!DllCall("GetIconInfo", "Ptr", hi, "Ptr", &ii))
+		return 0
+	hbmMask := NumGet(ii, 8 + A_PtrSize, "Ptr"), hbmColor := NumGet(ii, 8 + 2 * A_PtrSize, "Ptr")
+	bm := 0
+	if (hbmColor)
+		{
+		VarSetCapacity(bi, 40, 0)
+		NumPut(40, bi, 0, "UInt"), NumPut(s, bi, 4, "Int"), NumPut(-s, bi, 8, "Int")
+		NumPut(1, bi, 12, "UShort"), NumPut(32, bi, 14, "UShort")
+		VarSetCapacity(px, s * s * 4, 0)
+		dc := DllCall("CreateCompatibleDC", "Ptr", 0, "Ptr")
+		n := DllCall("GetDIBits", "Ptr", dc, "Ptr", hbmColor, "UInt", 0, "UInt", s, "Ptr", &px, "Ptr", &bi, "UInt", 0)
+		DllCall("DeleteDC", "Ptr", dc)
+		hasA := false
+		if (n)
+			Loop % s * s
+				if (NumGet(px, (A_Index - 1) * 4 + 3, "UChar"))
+					{
+					hasA := true
+					break
+					}
+		if (hasA)
+			{
+			tmp := 0
+			DllCall("gdiplus\GdipCreateBitmapFromScan0", "Int", s, "Int", s, "Int", s * 4, "Int", 0x26200A, "Ptr", &px, "Ptr*", tmp)
+			if (tmp)
+				{
+				; copied into a bitmap GDI+ owns: tmp only points at px, which is freed on return
+				DllCall("gdiplus\GdipCreateBitmapFromScan0", "Int", s, "Int", s, "Int", 0, "Int", 0x26200A, "Ptr", 0, "Ptr*", bm)
+				g2 := 0
+				if (bm and DllCall("gdiplus\GdipGetImageGraphicsContext", "Ptr", bm, "Ptr*", g2) = 0 and g2)
+					{
+					DllCall("gdiplus\GdipSetCompositingMode", "Ptr", g2, "Int", 1)
+					DllCall("gdiplus\GdipDrawImageRectI", "Ptr", g2, "Ptr", tmp, "Int", 0, "Int", 0, "Int", s, "Int", s)
+					DllCall("gdiplus\GdipDeleteGraphics", "Ptr", g2)
+					}
+				DllCall("gdiplus\GdipDisposeImage", "Ptr", tmp)
+				}
+			}
+		DllCall("DeleteObject", "Ptr", hbmColor)
+		}
+	if (hbmMask)
+		DllCall("DeleteObject", "Ptr", hbmMask)
+	if (!bm)
+		DllCall("gdiplus\GdipCreateBitmapFromHICON", "Ptr", hi, "Ptr*", bm)
+	return bm
 }
 
 ; A rounded shape on the overlay: fill (RRGGBB) at alpha a (0-255), optional 1 px edge.

@@ -1,3 +1,3 @@
-version=Alpha 2.3
+version=Alpha 2.4
 file=Re-Fisch.ahk
-notes=Auto Totem rebuilt: pick events on the Utilities tab (Aurora, Eclipse, Starfall, weather, Shiny...)|Finds the totems on your hotbar by name and uses a Sundial first when needed|Uses the totem again when its icon (bottom right) goes away
+notes=New look for the in-game status overlay|Shows reel fights next to casts, time-outs and time
