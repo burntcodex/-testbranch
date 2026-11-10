@@ -1,3 +1,3 @@
-version=Alpha 2.6
+version=Alpha 2.7
 file=Re-Fisch.ahk
-notes=New: Ruinous Oath rod support (follows its shrinking bar during perfect catches) | New: Detect my rod automatically (Rod tab) - reads your rod off the hotbar when you press Start and picks its settings
+notes=Ruinous Oath: steadier steering with human-like clicking off (60 ms minimum per press, misread bar ends ignored) | reel.log notes whether human-like clicking was on

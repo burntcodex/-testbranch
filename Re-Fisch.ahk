@@ -1,6 +1,6 @@
 ﻿;====================================================================================================;
 ;
-;   Re:Fisch  -  Alpha 2.6
+;   Re:Fisch  -  Alpha 2.7
 ;   A fishing macro for Fisch (Roblox). Made by bai. Personal use.
 ;
 ;   CREDITS  (also shown in the About tab)
@@ -61,7 +61,7 @@
 #MaxThreadsPerHotkey 2
 
 DFBetaVersion := "1.1.7-refisch-r10.3-ui-restore"
-RfVersion := "Alpha 2.6"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
+RfVersion := "Alpha 2.7"          ; shown in the sidebar, About, logs; the updater compares it (RfVerCmp)
 
 setkeydelay, -1
 setmousedelay, -1
@@ -1938,6 +1938,7 @@ RfReelFightStart() {
 	RfFight.castBlind := 0
 	; for the reel log: when the fight started, frames, frames with the bar / the fish / the fish on
 	; the bar, frames with bar and line both lost, frames let go by the gate
+	RfFight.ruL := -1, RfFight.ruR := -1, RfFight.ruFix := 0, RfFight.nPress := 0
 	RfFight.t0 := A_TickCount, RfFight.nF := 0, RfFight.nBar := 0, RfFight.nFish := 0, RfFight.nOn := 0
 	RfFight.nLostF := 0, RfFight.nLet := 0, RfFight.letting := false, RfFight.nStale := 0, RfFight.nHeld := 0
 	RfFight.eSum := 0.0, RfFight.eW := 0.0, RfFight.eN := 0, RfFight.eMid := 0
@@ -2000,7 +2001,8 @@ RfReelEnd(why) {
 RfReelLogStart() {
 	global
 	RfReelLogBuf .= "`r`n" . A_YYYY . "-" . A_MM . "-" . A_DD . " " . A_Hour . ":" . A_Min . ":" . A_Sec . "  " . RfVersion
-		. "  rod " . SpecialRod . ", " . ControlMode . " mode, bar " . Round(WhiteBarSize) . " px wide`r`n"
+		. "  rod " . SpecialRod . ", " . ControlMode . " mode, bar " . Round(WhiteBarSize) . " px wide"
+		. (HumanClicks ? ", human-like clicks " . HumanCps . "/s" : ", human-like clicks off") . "`r`n"
 }
 
 ; One line, stamped with the seconds since the fight started.
@@ -2088,6 +2090,10 @@ RfReelLogEnd(why) {
 	if (IsObject(m) and m.t0 and m.eN)
 		RfReelLog(Format("centring: fish {:.1f} px from the bar's middle on average ({}% of the bar's width), in its middle third {}% of frames"
 			, m.eSum / m.eN, Round(100 * m.eW / m.eN), Round(100 * m.eMid / m.eN)))
+	; Alpha 2.7: Ruinous Oath, bar ends that disagreed with the width (RfRuinousEnds) and presses
+	if (IsObject(m) and m.t0 and RfPlainRod())
+		RfReelLog(Format("bar ends corrected {} frames; {} presses ({:.1f} per s)"
+			, m.ruFix + 0, m.nPress + 0, (m.nPress + 0) * 1000.0 / Max(1, A_TickCount - m.t0)))
 	; Pinions Aria: what the planner did, in frames (go / cover both: once per note taken)
 	if (IsObject(m) and m.t0 and IsObject(m.pn))
 		{
@@ -2559,6 +2565,7 @@ RfSteer(found) {
 	barLeft := RunLeft, barWidth := RunWidth, source := "bar"
 	if (!found)
 		{
+		m.ruL := -1         ; Ruinous Oath: no last ends to compare with (RfRuinousEnds)
 		; no bar: Castbound guesses by the learned duty for 40 frames; rods that need their bar let go;
 		; the rest steer by the arrow
 		if (SpecialRod = "Castbound" and m.castBlind < 40)
@@ -2580,6 +2587,8 @@ RfSteer(found) {
 			return RfPress(false)
 		barLeft := ax - barWidth / 2, source := "arrow"
 		}
+	if (found and source = "bar" and SpecialRod = "Ruinous Oath")
+		RfRuinousEnds(barLeft, barWidth)
 	barX := barLeft + barWidth / 2
 	m.castBlind := 0
 	if (found)
@@ -2640,6 +2649,27 @@ RfPinTravel(err, rel) {
 	global WindowWidth
 	a := ((WindowWidth > 0) ? WindowWidth : 1920) * 0.45
 	return ((err + rel * Abs(rel) / (2 * a) + rel * 0.06) > 0) ? false : true
+}
+
+; Alpha 2.7: Ruinous Oath. Its slashes flash over the bar, and with presses free to flip every
+; frame (8 ms) one misread end moved the bar's middle by half the error, which the speed estimate
+; turned into a spike of hundreds of px/s: erratic steering. When this frame's width is more than
+; 12 % (and 6 px) off the usual width (the width ring's median), the end that moved less since the
+; last frame is kept and the other is placed at the usual width from it. l, wd: the bar (in / out).
+RfRuinousEnds(ByRef l, ByRef wd) {
+	global RfFight, WhiteBarSize
+	m := RfFight
+	ref := (m.wMed > 0) ? m.wMed : WhiteBarSize
+	if (m.ruL >= 0 and ref > 8 and Abs(wd - ref) > Max(6, ref * 0.12))
+		{
+		r := l + wd
+		if (Abs(l - m.ruL) <= Abs(r - m.ruR))
+			wd := ref + 0.0
+		else
+			l := r - ref, wd := ref + 0.0
+		m.ruFix := m.ruFix + 1
+		}
+	m.ruL := l + 0.0, m.ruR := l + wd
 }
 
 ; v held to lo .. hi, the low limit applied first. Returned as an expression: AutoHotkey v1 hands
@@ -2833,6 +2863,8 @@ RfPress(down) {
 			gap := (SpecialRod = "Requiem") ? ReelMinRelease : ((SpecialRod = "Stellarwave Melody" and SwPhase) ? SwMinRelease() : 0)
 			if (gap <= 0 and HumanClicks and RfHumanNow)
 				gap := RfHumanGap
+			if (gap <= 0 and RfHumanNow and SpecialRod = "Ruinous Oath")
+				gap := 60          ; Alpha 2.7: Ruinous Oath keeps 60 ms per press / release even with human-like clicks off
 			if (gap > 0 and PrecisionUpAt)
 				{
 				DllCall("QueryPerformanceCounter", "Int64*", now)
@@ -2859,6 +2891,8 @@ RfPress(down) {
 		PrecisionDown := true
 		DllCall("QueryPerformanceCounter", "Int64*", PrecisionDownAt)
 		PrecisionResendAt := PrecisionDownAt
+		if (IsObject(RfFight))
+			RfFight.nPress := RfFight.nPress + 1
 		RfHumanNext()
 		return
 		}
@@ -2871,6 +2905,8 @@ RfPress(down) {
 	gap := (SpecialRod = "Requiem") ? ReelMinHold : ((SpecialRod = "Stellarwave Melody" and SwPhase) ? 250 : 0)
 	if (gap <= 0 and HumanClicks and RfHumanNow)
 		gap := RfHumanGap
+	if (gap <= 0 and RfHumanNow and SpecialRod = "Ruinous Oath")
+		gap := 60          ; Alpha 2.7: Ruinous Oath keeps 60 ms per press / release even with human-like clicks off
 	if (gap > 0 and PrecisionDownAt)
 		{
 		DllCall("QueryPerformanceCounter", "Int64*", now)
